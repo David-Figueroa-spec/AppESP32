@@ -425,7 +425,7 @@ export default function App() {
 //  ESTILOS
 // ══════════════════════════════════════════════════════════════════════
 const s = StyleSheet.create({
-  container:      { flex: 1, backgroundColor: '#f5f7fb' },
+  container:      { flex: 1, backgroundColor: '#000000' },
   scroll:         { padding: 16, paddingBottom: 40 },
 
   header:         { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, marginTop: 8 },

@@ -368,19 +368,269 @@ function PantallaMonitoreo() {
     </SafeAreaView>
   );
 }
-
 // ══════════════════════════════════════════════════════════════════════
 //  PANTALLA PROYECTO FUTURO — Sensor de Luz (Lux → PPFD → DLI)
 // ══════════════════════════════════════════════════════════════════════
 import { LightSensor } from 'expo-sensors';
+import {
+  Modal,
+  Pressable,
+} from 'react-native';
+
+// ── Componente Modal Educativo ─────────────────────────────────────────
+function ModalComoFunciona({ visible, onClose, styles: s }) {
+  const conceptos = [
+    {
+      icono: '💡',
+      titulo: 'Lux — la cantidad de luz que llega',
+      tag: 'Lo que mide el sensor del celular',
+      tagColor: '#FEF3C7',
+      tagTexto: '#92400E',
+      cuerpo:
+        'El lux mide cuánta luz visible recibe una superficie. Un cuarto oscuro tiene ~50 lux, una oficina ~500 lux y el sol directo puede superar los 100 000 lux. El sensor del celular (el mismo que ajusta el brillo de pantalla) capta esta intensidad.',
+      analogia:
+        '💬 Piénsalo como el caudal de una manguera: los lux dicen cuánta agua sale, pero no si esa agua sirve para tu planta.',
+      analogiaColor: '#FFF8E1',
+      analogiaBorde: '#F59E0B',
+    },
+    {
+      icono: '⚡',
+      titulo: 'PPFD — la luz que las plantas realmente aprovechan',
+      tag: 'Calculado desde los lux',
+      tagColor: '#D1FAE5',
+      tagTexto: '#065F46',
+      cuerpo:
+        'Las plantas solo absorben ciertas longitudes de onda (rojo y azul principalmente) para la fotosíntesis. El PPFD mide esos fotones útiles en µmol/m²/s. Por eso se usa un factor Kₛ según el tipo de lámpara: el LED, el sol y el fluorescente emiten espectros distintos.',
+      analogia:
+        '💬 Es como filtrar el agua: el PPFD solo cuenta las gotas que la planta puede "beber" para crecer.',
+      analogiaColor: '#E8F5E9',
+      analogiaBorde: '#1D9E75',
+    },
+    {
+      icono: '📅',
+      titulo: 'DLI — la dosis diaria de luz',
+      tag: 'El dato más útil para el cultivo',
+      tagColor: '#EDE9FE',
+      tagTexto: '#4C1D95',
+      cuerpo:
+        'El DLI (Daily Light Integral) acumula todo el PPFD recibido durante el día. Si el PPFD es la velocidad, el DLI es la distancia total. Se mide en mol/m²/día. Un tomate necesita más "dosis" que una orquídea, igual que una persona activa necesita más calorías.',
+      analogia:
+        '💬 Menos de 5 = muy bajo · 5–15 = moderado · 15–30 = óptimo para cultivo · +30 = alto',
+      analogiaColor: '#F3E8FF',
+      analogiaBorde: '#7C3AED',
+    },
+  ];
+
+  const plantas = [
+    { nombre: 'Suculentas / cactus',  rango: '20–30',  color: '#E24B4A' },
+    { nombre: 'Tomates / pimientos',  rango: '22–30',  color: '#F59E0B' },
+    { nombre: 'Lechuga / espinaca',   rango: '12–17',  color: '#22C55E' },
+    { nombre: 'Albahaca / hierbas',   rango: '12–20',  color: '#1D9E75' },
+    { nombre: 'Orquídeas',            rango: '6–12',   color: '#7C3AED' },
+    { nombre: 'Plantas de interior',  rango: '4–8',    color: '#378ADD' },
+  ];
+
+  const pasos = [
+    'Coloca el celular donde está la planta, con la cámara apuntando hacia la fuente de luz.',
+    'Toca "Medir Lux ahora". La app promedia 5 lecturas seguidas para mayor precisión.',
+    'Elige el tipo de lámpara: solar, LED, fluorescente, HPS o Metal Halide.',
+    'Indica cuántas horas al día está encendida la luz (o sale el sol).',
+    'Lee el DLI y compáralo con el rango ideal de tu planta en la tabla.',
+  ];
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F5F5' }}>
+        {/* Header del modal */}
+        <View style={m.modalHeader}>
+          <View>
+            <Text style={m.modalTitulo}>¿Cómo funciona?</Text>
+            <Text style={m.modalSubtitulo}>Guía de mediciones · Lux → PPFD → DLI</Text>
+          </View>
+          <TouchableOpacity onPress={onClose} style={m.cerrarBtn}>
+            <Text style={m.cerrarTexto}>✕ Cerrar</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView
+          contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+          showsVerticalScrollIndicator={false}
+        >
+
+          {/* ── Sección: Qué mide cada valor ── */}
+          <Text style={m.seccion}>📊 Qué significa cada valor</Text>
+
+          {conceptos.map((c, i) => (
+            <View key={i} style={m.card}>
+              <View style={m.cardHeaderRow}>
+                <Text style={{ fontSize: 28 }}>{c.icono}</Text>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={m.cardTitulo}>{c.titulo}</Text>
+                  <View style={[m.tag, { backgroundColor: c.tagColor }]}>
+                    <Text style={[m.tagTexto, { color: c.tagTexto }]}>{c.tag}</Text>
+                  </View>
+                </View>
+              </View>
+              <Text style={m.cardCuerpo}>{c.cuerpo}</Text>
+              <View style={[m.analogia, { backgroundColor: c.analogiaColor, borderLeftColor: c.analogiaBorde }]}>
+                <Text style={m.analogiaTexto}>{c.analogia}</Text>
+              </View>
+            </View>
+          ))}
+
+          {/* ── Sección: Flujo de cálculo ── */}
+          <Text style={[m.seccion, { marginTop: 8 }]}>🔢 Cómo se calcula</Text>
+          <View style={m.card}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                {[
+                  { val: 'Lux',        sub: 'sensor',        color: '#F59E0B' },
+                  { val: '× Kₛ',       sub: 'tipo lámpara',  color: '#1D9E75' },
+                  { val: '= PPFD',     sub: 'µmol/m²/s',     color: '#378ADD' },
+                  { val: '× h × 0.0036', sub: 'horas luz',   color: '#7C3AED' },
+                  { val: '= DLI',      sub: 'mol/m²/día',    color: '#1D9E75' },
+                ].map((paso, i) => (
+                  <View key={i} style={[m.pasoBox, { borderTopColor: paso.color }]}>
+                    <Text style={[m.pasoVal, { color: paso.color }]}>{paso.val}</Text>
+                    <Text style={m.pasoSub}>{paso.sub}</Text>
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+            <View style={[m.analogia, { backgroundColor: '#E8F5E9', borderLeftColor: '#1D9E75', marginTop: 12 }]}>
+              <Text style={m.analogiaTexto}>
+                Kₛ varía según el espectro de cada fuente (Apogee Instruments). El factor 0.0036 convierte segundos a horas y µmol a mol.
+              </Text>
+            </View>
+          </View>
+
+          {/* ── Sección: Referencia por planta ── */}
+          <Text style={[m.seccion, { marginTop: 8 }]}>🌿 DLI de referencia por cultivo</Text>
+          <View style={m.card}>
+            {plantas.map((p, i) => (
+              <View key={i} style={[m.plantaFila, i < plantas.length - 1 && m.plantaFilaBorde]}>
+                <View style={[m.plantaDot, { backgroundColor: p.color }]} />
+                <Text style={m.plantaNombre}>{p.nombre}</Text>
+                <Text style={[m.plantaRango, { color: p.color }]}>{p.rango} mol/m²/día</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* ── Sección: Cómo medir ── */}
+          <Text style={[m.seccion, { marginTop: 8 }]}>📱 Cómo hacer la medición</Text>
+          <View style={m.card}>
+            {pasos.map((paso, i) => (
+              <View key={i} style={[m.pasoFila, i < pasos.length - 1 && { marginBottom: 14 }]}>
+                <View style={m.pasoNumCirculo}>
+                  <Text style={m.pasoNum}>{i + 1}</Text>
+                </View>
+                <Text style={m.pasoTexto}>{paso}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* ── Consejo final ── */}
+          <View style={[m.card, { backgroundColor: '#E8F4FD', borderLeftWidth: 4, borderLeftColor: '#378ADD' }]}>
+            <Text style={[m.cardTitulo, { color: '#1a5276', marginBottom: 6 }]}>
+              💡 ¿Qué hago con el resultado?
+            </Text>
+            <Text style={[m.cardCuerpo, { color: '#1a5276' }]}>
+              <Text style={{ fontWeight: '700' }}>DLI muy bajo:</Text> acerca la lámpara, aumenta las horas de luz o cambia a una fuente más potente.{'\n\n'}
+              <Text style={{ fontWeight: '700' }}>DLI muy alto:</Text> aleja la fuente o usa una malla de sombreo para evitar quemaduras en las hojas.{'\n\n'}
+              <Text style={{ fontWeight: '700' }}>Precisión:</Text> el sensor del celular es aproximado. Para resultados profesionales, calibra con un luxómetro de referencia.
+            </Text>
+          </View>
+
+        </ScrollView>
+      </SafeAreaView>
+    </Modal>
+  );
+}
+
+// ── Estilos del Modal ─────────────────────────────────────────────────
+const m = StyleSheet.create({
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E8E8E8',
+  },
+  modalTitulo:    { fontSize: 18, fontWeight: '700', color: '#1A1A1A' },
+  modalSubtitulo: { fontSize: 13, color: '#888', marginTop: 2 },
+  cerrarBtn:      { backgroundColor: '#F0F0F0', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
+  cerrarTexto:    { fontSize: 14, color: '#555', fontWeight: '600' },
+
+  seccion:        { fontSize: 13, fontWeight: '700', color: '#555', marginBottom: 10, marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
+
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  cardHeaderRow:  { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 },
+  cardTitulo:     { fontSize: 15, fontWeight: '700', color: '#1A1A1A', lineHeight: 20 },
+  tag:            { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, marginTop: 4 },
+  tagTexto:       { fontSize: 11, fontWeight: '600' },
+  cardCuerpo:     { fontSize: 14, color: '#444', lineHeight: 22 },
+  analogia: {
+    borderLeftWidth: 3,
+    borderRadius: 4,
+    padding: 10,
+    marginTop: 10,
+  },
+  analogiaTexto:  { fontSize: 13, color: '#555', lineHeight: 20 },
+
+  pasoBox: {
+    borderTopWidth: 3,
+    paddingTop: 8,
+    paddingHorizontal: 12,
+    paddingBottom: 10,
+    backgroundColor: '#F9F9F9',
+    borderRadius: 8,
+    alignItems: 'center',
+    minWidth: 90,
+  },
+  pasoVal:        { fontSize: 15, fontWeight: '700' },
+  pasoSub:        { fontSize: 11, color: '#888', marginTop: 2 },
+
+  plantaFila:     { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
+  plantaFilaBorde:{ borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
+  plantaDot:      { width: 10, height: 10, borderRadius: 5, marginRight: 10 },
+  plantaNombre:   { flex: 1, fontSize: 14, color: '#333' },
+  plantaRango:    { fontSize: 13, fontWeight: '600' },
+
+  pasoFila:       { flexDirection: 'row', alignItems: 'flex-start' },
+  pasoNumCirculo: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#1D9E75', alignItems: 'center', justifyContent: 'center', marginRight: 12, marginTop: 1, flexShrink: 0 },
+  pasoNum:        { color: '#fff', fontSize: 13, fontWeight: '700' },
+  pasoTexto:      { flex: 1, fontSize: 14, color: '#444', lineHeight: 22 },
+});
 
 
+// ══════════════════════════════════════════════════════════════════════
+//  PANTALLA PRINCIPAL
+// ══════════════════════════════════════════════════════════════════════
 function PantallaProyecto() {
   const [lux, setLux]               = useState(null);
   const [midiendo, setMidiendo]     = useState(false);
   const [horasInput, setHorasInput] = useState('12');
   const [tipoLuz, setTipoLuz]       = useState(0);
   const [error, setError]           = useState(null);
+  const [modalVisible, setModalVisible] = useState(false); // ← nuevo
   const suscripcionRef              = useRef(null);
   const muestrasRef                 = useRef([]);
 
@@ -404,54 +654,59 @@ function PantallaProyecto() {
     return '#1D9E75';
   };
 
-const detenerMedicion = () => {
-  if (suscripcionRef.current) {
-    suscripcionRef.current.remove(); // ← expo-sensors usa .remove()
-    suscripcionRef.current = null;
-  }
-  setMidiendo(false);
-};
+  const detenerMedicion = () => {
+    if (suscripcionRef.current) {
+      suscripcionRef.current.remove();
+      suscripcionRef.current = null;
+    }
+    setMidiendo(false);
+  };
 
   const iniciarMedicion = async () => {
-  setError(null);
+    setError(null);
 
-  // 1. Verificar si el sensor existe en el dispositivo
-  const disponible = await LightSensor.isAvailableAsync();
-  if (!disponible) {
-    setError('❌ Este dispositivo no tiene sensor de luz ambiental');
-    return;
-  }
+    const disponible = await LightSensor.isAvailableAsync();
+    if (!disponible) {
+      setError('❌ Este dispositivo no tiene sensor de luz ambiental');
+      return;
+    }
 
-  // 2. Pedir permiso (requerido en algunos Android)
-  const { status } = await LightSensor.requestPermissionsAsync();
-  if (status !== 'granted') {
-    setError('❌ Permiso denegado — actívalo en Configuración > Apps > Permisos');
-    return;
-  }
+    const { status } = await LightSensor.requestPermissionsAsync();
+    if (status !== 'granted') {
+      setError('❌ Permiso denegado — actívalo en Configuración > Apps > Permisos');
+      return;
+    }
 
-  setMidiendo(true);
-  muestrasRef.current = [];
+    setMidiendo(true);
+    muestrasRef.current = [];
 
-  try {
-    suscripcionRef.current = LightSensor.addListener(({ illuminance }) => {
-      muestrasRef.current.push(illuminance);
-      if (muestrasRef.current.length >= 5) {
-        const promedio = muestrasRef.current.reduce((a, b) => a + b, 0) / muestrasRef.current.length;
-        setLux(parseFloat(promedio.toFixed(1)));
-        detenerMedicion();
-      }
-    });
-  } catch (e) {
-    setError(`❌ Error al iniciar sensor: ${e.message}`);
-    detenerMedicion();
-  }
-};
+    try {
+      suscripcionRef.current = LightSensor.addListener(({ illuminance }) => {
+        muestrasRef.current.push(illuminance);
+        if (muestrasRef.current.length >= 5) {
+          const promedio = muestrasRef.current.reduce((a, b) => a + b, 0) / muestrasRef.current.length;
+          setLux(parseFloat(promedio.toFixed(1)));
+          detenerMedicion();
+        }
+      });
+    } catch (e) {
+      setError(`❌ Error al iniciar sensor: ${e.message}`);
+      detenerMedicion();
+    }
+  };
 
-  // Limpia la suscripción al desmontar
   useEffect(() => () => detenerMedicion(), []);
 
   return (
     <SafeAreaView style={s.container}>
+
+      {/* ── Modal educativo ── */}
+      <ModalComoFunciona
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        styles={s}
+      />
+
       <ScrollView contentContainerStyle={s.scroll}>
 
         {/* Header */}
@@ -465,6 +720,20 @@ const detenerMedicion = () => {
             <Text style={[s.estadoTexto, { color: '#2E7D32' }]}>Beta</Text>
           </View>
         </View>
+
+        {/* ── BOTÓN "¿Cómo funciona?" ── */}
+        <TouchableOpacity
+          style={proy.botonGuia}
+          onPress={() => setModalVisible(true)}
+          activeOpacity={0.75}
+        >
+          <Text style={proy.botonGuiaIcono}>📖</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={proy.botonGuiaTitulo}>¿Cómo funciona?</Text>
+            <Text style={proy.botonGuiaSub}>Qué son Lux, PPFD y DLI · Guía paso a paso</Text>
+          </View>
+          <Text style={proy.botonGuiaChevron}>›</Text>
+        </TouchableOpacity>
 
         {/* Botón de medición */}
         <TouchableOpacity

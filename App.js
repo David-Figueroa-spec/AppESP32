@@ -370,15 +370,19 @@ function PantallaMonitoreo() {
 }
 
 // ══════════════════════════════════════════════════════════════════════
-//  PANTALLA PROYECTO FUTURO
-// ══════════════════════════════════════════════════════════════════════
-// ══════════════════════════════════════════════════════════════════════
 //  PANTALLA PROYECTO FUTURO — Sensor de Luz (Lux → PPFD → DLI)
 // ══════════════════════════════════════════════════════════════════════
+import { LightSensor } from 'expo-sensors';
+
+
 function PantallaProyecto() {
-  const [luxInput, setLuxInput] = useState('20000');
+  const [lux, setLux]               = useState(null);
+  const [midiendo, setMidiendo]     = useState(false);
   const [horasInput, setHorasInput] = useState('12');
-  const [tipoLuz, setTipoLuz] = useState(0);
+  const [tipoLuz, setTipoLuz]       = useState(0);
+  const [error, setError]           = useState(null);
+  const suscripcionRef              = useRef(null);
+  const muestrasRef                 = useRef([]);
 
   const fuentes = [
     { label: '☀️ Solar',        ks: 0.0185 },
@@ -388,10 +392,9 @@ function PantallaProyecto() {
     { label: '🔵 LED Blanco',   ks: 0.0154 },
   ];
 
-  const lux   = parseFloat(luxInput)   || 0;
   const horas = parseFloat(horasInput) || 0;
   const ks    = fuentes[tipoLuz].ks;
-  const ppfd  = lux * ks;
+  const ppfd  = lux ? lux * ks : 0;
   const dli   = ppfd * horas * 0.0036;
 
   const getColorDLI = (d) => {
@@ -401,9 +404,55 @@ function PantallaProyecto() {
     return '#1D9E75';
   };
 
+const detenerMedicion = () => {
+  if (suscripcionRef.current) {
+    suscripcionRef.current.remove(); // ← expo-sensors usa .remove()
+    suscripcionRef.current = null;
+  }
+  setMidiendo(false);
+};
+
+  const iniciarMedicion = async () => {
+  setError(null);
+
+  // 1. Verificar si el sensor existe en el dispositivo
+  const disponible = await LightSensor.isAvailableAsync();
+  if (!disponible) {
+    setError('❌ Este dispositivo no tiene sensor de luz ambiental');
+    return;
+  }
+
+  // 2. Pedir permiso (requerido en algunos Android)
+  const { status } = await LightSensor.requestPermissionsAsync();
+  if (status !== 'granted') {
+    setError('❌ Permiso denegado — actívalo en Configuración > Apps > Permisos');
+    return;
+  }
+
+  setMidiendo(true);
+  muestrasRef.current = [];
+
+  try {
+    suscripcionRef.current = LightSensor.addListener(({ illuminance }) => {
+      muestrasRef.current.push(illuminance);
+      if (muestrasRef.current.length >= 5) {
+        const promedio = muestrasRef.current.reduce((a, b) => a + b, 0) / muestrasRef.current.length;
+        setLux(parseFloat(promedio.toFixed(1)));
+        detenerMedicion();
+      }
+    });
+  } catch (e) {
+    setError(`❌ Error al iniciar sensor: ${e.message}`);
+    detenerMedicion();
+  }
+};
+
+  // Limpia la suscripción al desmontar
+  useEffect(() => () => detenerMedicion(), []);
+
   return (
     <SafeAreaView style={s.container}>
-      <ScrollView contentContainerStyle={[s.scroll]}>
+      <ScrollView contentContainerStyle={s.scroll}>
 
         {/* Header */}
         <View style={s.header}>
@@ -416,6 +465,42 @@ function PantallaProyecto() {
             <Text style={[s.estadoTexto, { color: '#2E7D32' }]}>Beta</Text>
           </View>
         </View>
+
+        {/* Botón de medición */}
+        <TouchableOpacity
+          style={[s.boton, midiendo && s.botonOff, { marginBottom: 14 }]}
+          onPress={midiendo ? detenerMedicion : iniciarMedicion}
+        >
+          {midiendo
+            ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <ActivityIndicator color="#fff" />
+                <Text style={s.botonTexto}>Midiendo... toca para cancelar</Text>
+              </View>
+            )
+            : (
+              <Text style={s.botonTexto}>
+                {lux !== null ? `☀️ Volver a medir  (${lux} lux)` : '☀️ Medir Lux ahora'}
+              </Text>
+            )
+          }
+        </TouchableOpacity>
+
+        {/* Resultado de lux */}
+        {lux !== null && (
+          <View style={[s.chartCard, { alignItems: 'center', marginBottom: 14 }]}>
+            <Text style={[s.tarjetaLabel, { marginBottom: 4 }]}>LUX MEDIDOS</Text>
+            <Text style={[s.tarjetaValor, { fontSize: 40, color: '#FF9800' }]}>{lux}</Text>
+            <Text style={proy.unidadChica}>lux · promedio de 5 muestras</Text>
+          </View>
+        )}
+
+        {/* Error sensor */}
+        {error && (
+          <View style={s.errorBox}>
+            <Text style={s.errorTexto}>{error}</Text>
+          </View>
+        )}
 
         {/* Selector tipo de luz */}
         <View style={s.chartCard}>
@@ -440,100 +525,97 @@ function PantallaProyecto() {
           </ScrollView>
         </View>
 
-        {/* Inputs */}
-        <View style={s.fila}>
-          <View style={[s.chartCard, { flex: 1 }]}>
-            <Text style={s.chartTitulo}>Lux medidos</Text>
-            <TextInput
-              style={proy.input}
-              keyboardType="numeric"
-              value={luxInput}
-              onChangeText={setLuxInput}
-              placeholder="ej: 20000"
-              placeholderTextColor="#ccc"
-            />
-            <Text style={proy.inputUnidad}>lux</Text>
-          </View>
-          <View style={[s.chartCard, { flex: 1 }]}>
-            <Text style={s.chartTitulo}>Horas de luz</Text>
-            <TextInput
-              style={proy.input}
-              keyboardType="numeric"
-              value={horasInput}
-              onChangeText={setHorasInput}
-              placeholder="ej: 12"
-              placeholderTextColor="#ccc"
-            />
-            <Text style={proy.inputUnidad}>h/día</Text>
-          </View>
-        </View>
-
-        {/* Resultados */}
-        <View style={s.fila}>
-          <View style={[s.tarjeta, { flex: 1 }]}>
-            <Text style={s.tarjetaIcon}>⚡</Text>
-            <Text style={s.tarjetaLabel}>PPFD EST.</Text>
-            <Text style={[s.tarjetaValor, { color: '#3B8BD4', fontSize: 16 }]}>
-              {ppfd.toFixed(1)}
-            </Text>
-            <Text style={proy.unidadChica}>µmol/m²/s</Text>
-          </View>
-          <View style={[s.tarjeta, { flex: 1 }]}>
-            <Text style={s.tarjetaIcon}>📅</Text>
-            <Text style={s.tarjetaLabel}>DLI EST.</Text>
-            <Text style={[s.tarjetaValor, { color: getColorDLI(dli), fontSize: 16 }]}>
-              {dli.toFixed(2)}
-            </Text>
-            <Text style={proy.unidadChica}>mol/m²/día</Text>
-          </View>
-          <View style={[s.tarjeta, { flex: 1 }]}>
-            <Text style={s.tarjetaIcon}>🔢</Text>
-            <Text style={s.tarjetaLabel}>K ESPECTRO</Text>
-            <Text style={[s.tarjetaValor, { color: '#1D9E75', fontSize: 16 }]}>
-              {ks}
-            </Text>
-            <Text style={proy.unidadChica}>factor</Text>
-          </View>
-        </View>
-
-        {/* Barra DLI visual */}
-        <View style={s.chartCard}>
-          <View style={s.chartHeader}>
-            <Text style={s.chartTitulo}>Índice DLI estimado</Text>
-            <Text style={[s.linkBtn, { color: getColorDLI(dli) }]}>
-              {dli < 5 ? 'Muy bajo' : dli < 15 ? 'Moderado' : dli < 30 ? 'Óptimo' : 'Alto'}
-            </Text>
-          </View>
-          <View style={proy.barraFondo}>
-            <View style={[proy.barraRelleno, {
-              width: `${Math.min((dli / 60) * 100, 100)}%`,
-              backgroundColor: getColorDLI(dli)
-            }]} />
-          </View>
-          <View style={proy.barraEtiquetas}>
-            {[0, 5, 15, 30, 60].map(v => (
-              <Text key={v} style={proy.barraEtiquetaTexto}>{v}</Text>
+        {/* Horas de luz */}
+        <View style={[s.chartCard, { marginBottom: 14 }]}>
+          <Text style={s.chartTitulo}>Horas de luz por día</Text>
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+            {[6, 8, 10, 12, 14, 16, 18].map(h => (
+              <TouchableOpacity
+                key={h}
+                onPress={() => setHorasInput(String(h))}
+                style={[proy.chip, String(h) === horasInput && proy.chipActivo]}
+              >
+                <Text style={[proy.chipTexto, String(h) === horasInput && proy.chipTextoActivo]}>
+                  {h}h
+                </Text>
+              </TouchableOpacity>
             ))}
           </View>
-          <Text style={s.chartNota}>mol/m²/día · &lt;5 bajo · 5–15 moderado · 15–30 óptimo para cultivo</Text>
         </View>
+
+        {/* Tarjetas resultado — solo si hay lux */}
+        {lux !== null && (
+          <>
+            <View style={s.fila}>
+              <View style={[s.tarjeta, { flex: 1 }]}>
+                <Text style={s.tarjetaIcon}>⚡</Text>
+                <Text style={s.tarjetaLabel}>PPFD EST.</Text>
+                <Text style={[s.tarjetaValor, { color: '#3B8BD4', fontSize: 16 }]}>
+                  {ppfd.toFixed(1)}
+                </Text>
+                <Text style={proy.unidadChica}>µmol/m²/s</Text>
+              </View>
+              <View style={[s.tarjeta, { flex: 1 }]}>
+                <Text style={s.tarjetaIcon}>📅</Text>
+                <Text style={s.tarjetaLabel}>DLI EST.</Text>
+                <Text style={[s.tarjetaValor, { color: getColorDLI(dli), fontSize: 16 }]}>
+                  {dli.toFixed(2)}
+                </Text>
+                <Text style={proy.unidadChica}>mol/m²/día</Text>
+              </View>
+              <View style={[s.tarjeta, { flex: 1 }]}>
+                <Text style={s.tarjetaIcon}>🔢</Text>
+                <Text style={s.tarjetaLabel}>K ESPECTRO</Text>
+                <Text style={[s.tarjetaValor, { color: '#1D9E75', fontSize: 16 }]}>
+                  {ks}
+                </Text>
+                <Text style={proy.unidadChica}>factor</Text>
+              </View>
+            </View>
+
+            {/* Barra DLI */}
+            <View style={s.chartCard}>
+              <View style={s.chartHeader}>
+                <Text style={s.chartTitulo}>Índice DLI estimado</Text>
+                <Text style={[s.linkBtn, { color: getColorDLI(dli) }]}>
+                  {dli < 5 ? 'Muy bajo' : dli < 15 ? 'Moderado' : dli < 30 ? 'Óptimo' : 'Alto'}
+                </Text>
+              </View>
+              <View style={proy.barraFondo}>
+                <View style={[proy.barraRelleno, {
+                  width: `${Math.min((dli / 60) * 100, 100)}%`,
+                  backgroundColor: getColorDLI(dli),
+                }]} />
+              </View>
+              <View style={proy.barraEtiquetas}>
+                {[0, 5, 15, 30, 60].map(v => (
+                  <Text key={v} style={proy.barraEtiquetaTexto}>{v}</Text>
+                ))}
+              </View>
+              <Text style={s.chartNota}>
+                mol/m²/día · &lt;5 bajo · 5–15 moderado · 15–30 óptimo para cultivo
+              </Text>
+            </View>
+          </>
+        )}
 
         {/* Fórmula */}
         <View style={s.chartCard}>
           <Text style={s.chartTitulo}>📐 Fórmula utilizada</Text>
           <View style={proy.formulaBox}>
             <Text style={proy.formulaTexto}>PPFD = Lux × Kₛ</Text>
-            <Text style={proy.formulaTexto}>DLI = Lux × Kₛ × H × 0.0036</Text>
+            <Text style={proy.formulaTexto}>DLI  = Lux × Kₛ × H × 0.0036</Text>
           </View>
           <Text style={[s.chartNota, { marginTop: 8 }]}>
-            Kₛ varía según el espectro de la fuente · Apogee Instruments (2024)
+            Kₛ varía según el espectro de la fuente · Apogee Instruments
           </Text>
         </View>
 
         {/* Nota técnica */}
         <View style={[s.alertaBox, { borderLeftColor: '#3B8BD4', backgroundColor: '#e8f4fd' }]}>
           <Text style={[s.alertaTexto, { color: '#1a5276' }]}>
-            ℹ️ El sensor del celular mide lux aproximados. Para mayor precisión, calibrar con un luxómetro de referencia y ajustar con un factor Kcal adicional.
+            ℹ️ El sensor del celular mide lux aproximados. Para mayor precisión,
+            calibrar con un luxómetro de referencia y ajustar con un factor Kcal adicional.
           </Text>
         </View>
 

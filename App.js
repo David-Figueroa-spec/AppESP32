@@ -741,3 +741,25 @@ const proy = StyleSheet.create({
   formulaBox:      { backgroundColor: '#f8f8f8', borderRadius: 10, padding: 14, marginTop: 10, gap: 6 },
   formulaTexto:    { fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontSize: 14, color: '#333', fontWeight: '600' },
 });
+const proy_nuevos = StyleSheet.create({
+  botonGuia: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#E0F2E9',
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+    gap: 12,
+  },
+  botonGuiaIcono:  { fontSize: 24 },
+  botonGuiaTitulo: { fontSize: 15, fontWeight: '700', color: '#1A1A1A' },
+  botonGuiaSub:    { fontSize: 12, color: '#888', marginTop: 2 },
+  botonGuiaChevron:{ fontSize: 24, color: '#CCC', fontWeight: '300' },
+});

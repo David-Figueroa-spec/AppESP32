@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, ScrollView,
   SafeAreaView, ActivityIndicator, Switch, Share, Platform,
-  Vibration, Alert,
-} from 'react-native';
+  Vibration, Alert, TextInput,  // ← agrega TextInput aquí
+} from 'react-native';  
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { LineChart } from 'react-native-gifted-charts';
@@ -372,18 +372,171 @@ function PantallaMonitoreo() {
 // ══════════════════════════════════════════════════════════════════════
 //  PANTALLA PROYECTO FUTURO
 // ══════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════
+//  PANTALLA PROYECTO FUTURO — Sensor de Luz (Lux → PPFD → DLI)
+// ══════════════════════════════════════════════════════════════════════
 function PantallaProyecto() {
+  const [luxInput, setLuxInput] = useState('20000');
+  const [horasInput, setHorasInput] = useState('12');
+  const [tipoLuz, setTipoLuz] = useState(0);
+
+  const fuentes = [
+    { label: '☀️ Solar',        ks: 0.0185 },
+    { label: '💡 Fluorescente', ks: 0.0135 },
+    { label: '🟠 HPS',          ks: 0.0122 },
+    { label: '⚡ Metal Halide', ks: 0.0141 },
+    { label: '🔵 LED Blanco',   ks: 0.0154 },
+  ];
+
+  const lux   = parseFloat(luxInput)   || 0;
+  const horas = parseFloat(horasInput) || 0;
+  const ks    = fuentes[tipoLuz].ks;
+  const ppfd  = lux * ks;
+  const dli   = ppfd * horas * 0.0036;
+
+  const getColorDLI = (d) => {
+    if (d < 5)  return '#E8593C';
+    if (d < 15) return '#FF9800';
+    if (d < 30) return '#4CAF50';
+    return '#1D9E75';
+  };
+
   return (
     <SafeAreaView style={s.container}>
-      <ScrollView contentContainerStyle={[s.scroll, { justifyContent: 'center', flex: 1 }]}>
-        <View style={s.futuroCard}>
-          <Text style={s.futuroIcon}>🚀</Text>
-          <Text style={s.futuroTitulo}>Próximo proyecto</Text>
-          <Text style={s.futuroSub}>Este espacio está reservado para una futura expansión del sistema.</Text>
-          <View style={s.futuroBadge}>
-            <Text style={s.futuroBadgeTexto}>En desarrollo</Text>
+      <ScrollView contentContainerStyle={[s.scroll]}>
+
+        {/* Header */}
+        <View style={s.header}>
+          <View>
+            <Text style={s.titulo}>Sensor de Luz</Text>
+            <Text style={s.subtitulo}>Lux → PPFD → DLI desde el celular</Text>
+          </View>
+          <View style={[s.estadoBadge, { backgroundColor: '#e8f5e9' }]}>
+            <Text style={{ fontSize: 16 }}>🌿</Text>
+            <Text style={[s.estadoTexto, { color: '#2E7D32' }]}>Beta</Text>
           </View>
         </View>
+
+        {/* Selector tipo de luz */}
+        <View style={s.chartCard}>
+          <Text style={s.chartTitulo}>Tipo de fuente de luz</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {fuentes.map((f, i) => (
+                <TouchableOpacity
+                  key={i}
+                  onPress={() => setTipoLuz(i)}
+                  style={[proy.chip, tipoLuz === i && proy.chipActivo]}
+                >
+                  <Text style={[proy.chipTexto, tipoLuz === i && proy.chipTextoActivo]}>
+                    {f.label}
+                  </Text>
+                  <Text style={[proy.chipSub, tipoLuz === i && { color: '#fff' }]}>
+                    Kₛ = {f.ks}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+
+        {/* Inputs */}
+        <View style={s.fila}>
+          <View style={[s.chartCard, { flex: 1 }]}>
+            <Text style={s.chartTitulo}>Lux medidos</Text>
+            <TextInput
+              style={proy.input}
+              keyboardType="numeric"
+              value={luxInput}
+              onChangeText={setLuxInput}
+              placeholder="ej: 20000"
+              placeholderTextColor="#ccc"
+            />
+            <Text style={proy.inputUnidad}>lux</Text>
+          </View>
+          <View style={[s.chartCard, { flex: 1 }]}>
+            <Text style={s.chartTitulo}>Horas de luz</Text>
+            <TextInput
+              style={proy.input}
+              keyboardType="numeric"
+              value={horasInput}
+              onChangeText={setHorasInput}
+              placeholder="ej: 12"
+              placeholderTextColor="#ccc"
+            />
+            <Text style={proy.inputUnidad}>h/día</Text>
+          </View>
+        </View>
+
+        {/* Resultados */}
+        <View style={s.fila}>
+          <View style={[s.tarjeta, { flex: 1 }]}>
+            <Text style={s.tarjetaIcon}>⚡</Text>
+            <Text style={s.tarjetaLabel}>PPFD EST.</Text>
+            <Text style={[s.tarjetaValor, { color: '#3B8BD4', fontSize: 16 }]}>
+              {ppfd.toFixed(1)}
+            </Text>
+            <Text style={proy.unidadChica}>µmol/m²/s</Text>
+          </View>
+          <View style={[s.tarjeta, { flex: 1 }]}>
+            <Text style={s.tarjetaIcon}>📅</Text>
+            <Text style={s.tarjetaLabel}>DLI EST.</Text>
+            <Text style={[s.tarjetaValor, { color: getColorDLI(dli), fontSize: 16 }]}>
+              {dli.toFixed(2)}
+            </Text>
+            <Text style={proy.unidadChica}>mol/m²/día</Text>
+          </View>
+          <View style={[s.tarjeta, { flex: 1 }]}>
+            <Text style={s.tarjetaIcon}>🔢</Text>
+            <Text style={s.tarjetaLabel}>K ESPECTRO</Text>
+            <Text style={[s.tarjetaValor, { color: '#1D9E75', fontSize: 16 }]}>
+              {ks}
+            </Text>
+            <Text style={proy.unidadChica}>factor</Text>
+          </View>
+        </View>
+
+        {/* Barra DLI visual */}
+        <View style={s.chartCard}>
+          <View style={s.chartHeader}>
+            <Text style={s.chartTitulo}>Índice DLI estimado</Text>
+            <Text style={[s.linkBtn, { color: getColorDLI(dli) }]}>
+              {dli < 5 ? 'Muy bajo' : dli < 15 ? 'Moderado' : dli < 30 ? 'Óptimo' : 'Alto'}
+            </Text>
+          </View>
+          <View style={proy.barraFondo}>
+            <View style={[proy.barraRelleno, {
+              width: `${Math.min((dli / 60) * 100, 100)}%`,
+              backgroundColor: getColorDLI(dli)
+            }]} />
+          </View>
+          <View style={proy.barraEtiquetas}>
+            {[0, 5, 15, 30, 60].map(v => (
+              <Text key={v} style={proy.barraEtiquetaTexto}>{v}</Text>
+            ))}
+          </View>
+          <Text style={s.chartNota}>mol/m²/día · &lt;5 bajo · 5–15 moderado · 15–30 óptimo para cultivo</Text>
+        </View>
+
+        {/* Fórmula */}
+        <View style={s.chartCard}>
+          <Text style={s.chartTitulo}>📐 Fórmula utilizada</Text>
+          <View style={proy.formulaBox}>
+            <Text style={proy.formulaTexto}>PPFD = Lux × Kₛ</Text>
+            <Text style={proy.formulaTexto}>DLI = Lux × Kₛ × H × 0.0036</Text>
+          </View>
+          <Text style={[s.chartNota, { marginTop: 8 }]}>
+            Kₛ varía según el espectro de la fuente · Apogee Instruments (2024)
+          </Text>
+        </View>
+
+        {/* Nota técnica */}
+        <View style={[s.alertaBox, { borderLeftColor: '#3B8BD4', backgroundColor: '#e8f4fd' }]}>
+          <Text style={[s.alertaTexto, { color: '#1a5276' }]}>
+            ℹ️ El sensor del celular mide lux aproximados. Para mayor precisión, calibrar con un luxómetro de referencia y ajustar con un factor Kcal adicional.
+          </Text>
+        </View>
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -486,4 +639,23 @@ const s = StyleSheet.create({
   futuroSub:      { fontSize: 14, color: '#999', textAlign: 'center', lineHeight: 22, marginBottom: 20 },
   futuroBadge:    { backgroundColor: '#e8f4fd', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
   futuroBadgeTexto: { color: '#007AFF', fontWeight: '600', fontSize: 13 },
+});
+const proy = StyleSheet.create({
+  chip:            { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, backgroundColor: '#f5f5f5', alignItems: 'center', minWidth: 100 },
+  chipActivo:      { backgroundColor: '#007AFF' },
+  chipTexto:       { fontSize: 13, fontWeight: '600', color: '#555' },
+  chipTextoActivo: { color: '#fff' },
+  chipSub:         { fontSize: 10, color: '#aaa', marginTop: 2 },
+
+  input:           { fontSize: 22, fontWeight: 'bold', color: '#1a1a1a', marginTop: 8, marginBottom: 2 },
+  inputUnidad:     { fontSize: 11, color: '#aaa', fontWeight: '600' },
+  unidadChica:     { fontSize: 9, color: '#aaa', marginTop: 2 },
+
+  barraFondo:      { height: 12, backgroundColor: '#f0f0f0', borderRadius: 6, overflow: 'hidden', marginTop: 10 },
+  barraRelleno:    { height: '100%', borderRadius: 6 },
+  barraEtiquetas:  { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
+  barraEtiquetaTexto: { fontSize: 10, color: '#bbb' },
+
+  formulaBox:      { backgroundColor: '#f8f8f8', borderRadius: 10, padding: 14, marginTop: 10, gap: 6 },
+  formulaTexto:    { fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontSize: 14, color: '#333', fontWeight: '600' },
 });

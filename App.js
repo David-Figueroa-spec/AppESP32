@@ -13,7 +13,7 @@ import { LineChart } from 'react-native-gifted-charts';
 // ══════════════════════════════════════════════════════════════════════
 const SUPABASE_URL  = 'https://xezrsaxatclqoadymalm.supabase.co';
 const SUPABASE_ANON = 'sb_publishable_MqtmstW_6bMGlM6-q7-a_Q_-L6VYWyU';
-const ESP32_IP      = 'http://192.168.1.50/api/datos';
+const ESP32_IP = 'http://10.41.71.237/api/datos';
 
 const ALERTAS = {
   dht_temp:  { min: 10, max: 35, label: 'Temp DHT' },

@@ -9,7 +9,7 @@
     "web": "expo start --web"
   },
   "dependencies": {
-    "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-navigation/bottom-tabs": "^7.16.1",
     "@react-navigation/native": "^7.2.4",
     "expo": "^55.0.25",
@@ -20,6 +20,7 @@
     "expo-updates": "~55.0.23",
     "react": "19.2.0",
     "react-native": "0.83.6",
+    "react-native-ble-plx": "^3.5.1",
     "react-native-gifted-charts": "^1.4.77",
     "react-native-safe-area-context": "^5.8.0",
     "react-native-screens": "^4.25.1",

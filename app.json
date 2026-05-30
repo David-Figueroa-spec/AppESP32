@@ -13,7 +13,10 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSBluetoothAlwaysUsageDescription": "Necesitamos acceso al Bluetooth para conectar con el ESP32 y leer los datos de los sensores."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -22,24 +25,31 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.anonymous.AppESP32",
-      "usesCleartextTraffic": true
+      "usesCleartextTraffic": true,
+      "permissions": [
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_ADMIN",
+        "android.permission.BLUETOOTH_CONNECT",
+        "android.permission.BLUETOOTH_SCAN",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-sqlite"
-    ],
-    "extra": {
-      "eas": {
-        "projectId": "5272ec14-19f9-4332-a31d-95dd78964c66"
-      }
-    },
+  "expo-sqlite",
+  "react-native-ble-plx"
+],
     "runtimeVersion": {
       "policy": "appVersion"
     },
-    "updates": {
-      "url": "https://u.expo.dev/5272ec14-19f9-4332-a31d-95dd78964c66"
-    }
+    
+    "extra": {
+      "eas": {
+        "projectId": "945eaad9-88d6-4de2-97a4-d2e987dbcfd7"
+      }
+    },
+    "owner": "zuri-catin"
   }
 }

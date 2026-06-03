@@ -13,6 +13,7 @@
     "@react-navigation/bottom-tabs": "^7.16.1",
     "@react-navigation/native": "^7.2.4",
     "expo": "^55.0.25",
+    "expo-build-properties": "~55.0.14",
     "expo-linear-gradient": "~55.0.14",
     "expo-sensors": "~55.0.15",
     "expo-sqlite": "~55.0.16",

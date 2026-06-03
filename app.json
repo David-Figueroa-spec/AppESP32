@@ -38,13 +38,13 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-  "expo-sqlite",
-  "react-native-ble-plx"
-],
+      "expo-sqlite",
+      "react-native-ble-plx",
+      "expo-build-properties"
+    ],
     "runtimeVersion": {
       "policy": "appVersion"
     },
-    
     "extra": {
       "eas": {
         "projectId": "945eaad9-88d6-4de2-97a4-d2e987dbcfd7"
